@@ -2,5 +2,5 @@
 Encoding=UTF-8
 Type=Application
 Name=connman-ui
-Exec=sudo connman-ui-gtk
+Exec=connman-ui-gtk
 StartupNotify=true
