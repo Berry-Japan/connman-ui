@@ -1,3 +1,0 @@
-#!/bin/sh
-echo "Deprecated! Please use autogen.sh" >&2
-exec ./autogen.sh "$@"

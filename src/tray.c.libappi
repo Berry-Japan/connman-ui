@@ -1,0 +1,159 @@
+/*
+ *
+ *  Connection Manager UI
+ *
+ *  Copyright (C) 2012  Intel Corporation. All rights reserved.
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License version 2 as
+ *  published by the Free Software Foundation.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, write to the Free Software
+ *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+ *
+ */
+
+#include <connman-ui-gtk.h>
+#include <libappindicator-0.1/app-indicator.h>
+#include <gdk-pixbuf/gdk-pixbuf.h>
+#include <gtk/gtk.h>
+#include <stdio.h>
+
+#define CUI_TRAYICON_UI_PATH CUI_UI_PATH "/tray.ui"
+
+static AppIndicator *cui_indicator = NULL;
+static void (*popup_left_menu_f)(GtkMenu *, gpointer);
+static void (*popup_right_menu_f)(GtkMenu *, guint, guint, gpointer);
+static int left_menu_handler_id = 0;
+static int right_menu_handler_id = 0;
+static gchar *current_icon_path = NULL;
+
+void cui_trayicon_update_icon(void)
+{
+    enum connman_state state;
+    GdkPixbuf *image = NULL;
+    const char *info = NULL;
+    gchar *icon_name = NULL;
+
+    state = connman_manager_get_state();
+    cui_theme_get_state_icone_and_info(state, &image, &info);
+
+    if (image) {
+        // Save pixbuf to a temporary file for AppIndicator
+        icon_name = g_strdup_printf("/tmp/connman-ui-icon-%d.png", getpid());
+        GError *error = NULL;
+        if (!gdk_pixbuf_save(image, icon_name, "png", &error, NULL)) {
+            g_printerr("Failed to save icon: %s\n", error->message);
+            g_error_free(error);
+            g_free(icon_name);
+            icon_name = NULL;
+        } else {
+            app_indicator_set_icon_full(cui_indicator, icon_name, info ? info : "Connection Manager");
+            // Clean up previous icon file
+            if (current_icon_path && g_file_test(current_icon_path, G_FILE_TEST_EXISTS)) {
+                g_unlink(current_icon_path);
+            }
+            g_free(current_icon_path);
+            current_icon_path = icon_name;
+        }
+    }
+
+    if (info) {
+        app_indicator_set_label(cui_indicator, info, info);
+    }
+
+    app_indicator_set_status(cui_indicator, APP_INDICATOR_STATUS_ACTIVE);
+}
+
+static void activate_left_menu_cb(AppIndicator *indicator, gpointer user_data)
+{
+    if (popup_left_menu_f) {
+        GtkMenu *menu = gtk_menu_new();
+        popup_left_menu_f(menu, user_data);
+        gtk_menu_popup_at_pointer(menu, NULL);
+    }
+}
+
+static void activate_right_menu_cb(AppIndicator *indicator, guint button, guint activate_time, gpointer user_data)
+{
+    if (popup_right_menu_f && button == 3) {
+        GtkMenu *menu = gtk_menu_new();
+        popup_right_menu_f(menu, button, activate_time, user_data);
+        gtk_menu_popup_at_pointer(menu, NULL);
+    }
+}
+
+void cui_tray_hook_left_menu(gpointer callback)
+{
+    popup_left_menu_f = callback;
+}
+
+void cui_tray_hook_right_menu(gpointer callback)
+{
+    popup_right_menu_f = callback;
+}
+
+void cui_tray_left_menu_disable(void)
+{
+    if (left_menu_handler_id != 0) {
+        g_signal_handler_disconnect(cui_indicator, left_menu_handler_id);
+        left_menu_handler_id = 0;
+    }
+}
+
+void cui_tray_enable(void)
+{
+    if (left_menu_handler_id == 0) {
+        left_menu_handler_id = g_signal_connect(cui_indicator, "activate",
+            G_CALLBACK(activate_left_menu_cb), NULL);
+    }
+    if (right_menu_handler_id == 0) {
+        right_menu_handler_id = g_signal_connect(cui_indicator, "popup-menu",
+            G_CALLBACK(activate_right_menu_cb), NULL);
+    }
+}
+
+void cui_tray_disable(void)
+{
+    if (left_menu_handler_id != 0) {
+        g_signal_handler_disconnect(cui_indicator, left_menu_handler_id);
+        left_menu_handler_id = 0;
+    }
+    if (right_menu_handler_id != 0) {
+        g_signal_handler_disconnect(cui_indicator, right_menu_handler_id);
+        right_menu_handler_id = 0;
+    }
+}
+
+gint cui_load_trayicon(GtkBuilder *builder)
+{
+    GError *error = NULL;
+
+    gtk_builder_add_from_file(builder, CUI_TRAYICON_UI_PATH, &error);
+    if (error != NULL) {
+        printf("Error: %s\n", error->message);
+        g_error_free(error);
+        return -EINVAL;
+    }
+
+    cui_indicator = app_indicator_new("connman-ui", "network-offline",
+        APP_INDICATOR_CATEGORY_SYSTEM_SERVICES);
+
+    if (!cui_indicator) {
+        printf("Error: Failed to create AppIndicator\n");
+        return -EINVAL;
+    }
+
+    cui_trayicon_update_icon();
+
+    cui_load_left_menu(builder, cui_indicator);
+    cui_load_right_menu(builder, cui_indicator);
+
+    return 0;
+}

@@ -1,21 +1,21 @@
 /*
  *
- * Connection Manager UI
+ *  Connection Manager UI
  *
- * Copyright (C) 2012  Intel Corporation. All rights reserved.
+ *  Copyright (C) 2012  Intel Corporation. All rights reserved.
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License version 2 as
+ *  published by the Free Software Foundation.
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, write to the Free Software
+ *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  *
  */
 
@@ -31,9 +31,6 @@ static GtkMenu *cui_tethering_menu = NULL;
 static GHashTable *tech_items = NULL;
 static int item_position = 3;
 static gboolean disabled = TRUE;
-
-// cui_builder is declared as extern in connman-ui-gtk.h, so we don't declare it here.
-// It will be assigned in cui_load_right_menu.
 
 static void add_technology(const char *path)
 {
@@ -118,8 +115,8 @@ popup:
 	connman_technology_set_removed_callback(technology_removed_cb);
 	connman_technology_set_added_callback(technology_added_cb);
 
-    // Replaced deprecated gtk_menu_popup with gtk_menu_popup_at_pointer
-    gtk_menu_popup_at_pointer(cui_right_menu, NULL);
+	gtk_menu_popup(cui_right_menu, NULL, NULL,
+				NULL, NULL, button, activate_time);
 }
 
 static void cui_popdown_right_menu(GtkMenu *menu, gpointer user_data)
@@ -130,10 +127,8 @@ static void cui_popdown_right_menu(GtkMenu *menu, gpointer user_data)
 	g_hash_table_remove_all(tech_items);
 }
 
-// Definition of cui_enable_item moved here to resolve implicit declaration error.
 static void cui_enable_item(gboolean enable)
 {
-	// set_widget_hidden is assumed to be defined in connman-ui-gtk.h or a linked utility file.
 	set_widget_hidden(cui_builder, "cui_item_offlinemode_on", enable);
 	set_widget_hidden(cui_builder, "cui_item_offlinemode_off", enable);
 	set_widget_hidden(cui_builder, "cui_sep_technology_up", enable);
@@ -170,7 +165,6 @@ gint cui_load_right_menu(GtkBuilder *builder, GtkStatusIcon *trayicon)
 		return -EINVAL;
 	}
 
-	// Assign the builder to the global variable declared as extern in connman-ui-gtk.h
 	cui_builder = builder;
 
 	cui_right_menu = (GtkMenu *) gtk_builder_get_object(builder,
@@ -200,17 +194,9 @@ gint cui_load_right_menu(GtkBuilder *builder, GtkStatusIcon *trayicon)
 						builder, "cui_item_tethering");
 
 	cui_theme_get_tethering_icone_and_info(&image, NULL);
-	if (image != NULL) {
-        // Retrieve the GtkImage child from the GtkImageMenuItem (which is a GtkBin)
-        GtkWidget *image_widget = gtk_bin_get_child(GTK_BIN(cui_item_tethering));
-        if (GTK_IS_IMAGE(image_widget)) {
-            // If it's a GtkImage, update its pixbuf directly (non-deprecated)
-            gtk_image_set_from_pixbuf(GTK_IMAGE(image_widget), image);
-        }
-        // Removed the fallback using gtk_image_menu_item_set_image to completely
-        // eliminate the deprecation warning. This assumes the UI file is correctly
-        // structured to have a GtkImage child within the GtkImageMenuItem.
-    }
+	if (image != NULL)
+		gtk_image_menu_item_set_image(cui_item_tethering,
+					gtk_image_new_from_pixbuf(image));
 
 	cui_tray_hook_right_menu(cui_popup_right_menu);
 

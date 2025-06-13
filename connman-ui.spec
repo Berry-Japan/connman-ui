@@ -16,11 +16,8 @@ Description: %{summary}
 
 %prep
 %setup -q
-#./bootstrap
-#./autogen.sh
 
 %build
-#./configure --prefix=/usr
 CMAKE_INSTALL_PREFIX=/usr cmake .
 make %{?_smp_mflags}
 
