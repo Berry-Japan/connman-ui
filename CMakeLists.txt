@@ -55,18 +55,13 @@ pkg_check_modules(DBUS REQUIRED dbus-1>=1.4)
 # GLib, D-Bus, AppIndicator の CFLAGS をアプリケーション全体の CFLAGS に追加
 add_compile_options(${GLIB_CFLAGS} ${DBUS_CFLAGS} ${APPINDICATOR_CFLAGS})
 
-# 定義
-set(CUI_UI_PATH_REL "ui")
-set(CUI_ICON_PATH_REL "icons")
-
-# MAINTAINER_MODE のパス設定
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
-    set(CUI_UI_PATH "${abs_top_srcdir}/${CUI_UI_PATH_REL}")
-    set(CUI_ICON_PATH "${abs_top_srcdir}/${CUI_ICON_PATH_REL}")
+    set(CUI_UI_PATH "${abs_top_srcdir}/ui")
+    set(CUI_ICON_PATH "${abs_top_srcdir}/icons")
     set(LOCALEDIR "${abs_top_srcdir}/po")
 else()
-    set(CUI_UI_PATH "${CMAKE_INSTALL_DATADIR}/connman_ui_gtk/${CUI_UI_PATH_REL}")
-    set(CUI_ICON_PATH "${CMAKE_INSTALL_DATADIR}/connman_ui_gtk/${CUI_ICON_PATH_REL}")
+    set(CUI_UI_PATH "${CMAKE_INSTALL_DATADIR}/connman_ui_gtk/ui")
+    set(CUI_ICON_PATH "${CMAKE_INSTALL_DATADIR}/connman_ui_gtk/icons")
     set(LOCALEDIR "${CMAKE_INSTALL_LOCALEDIR}")
 endif()
 

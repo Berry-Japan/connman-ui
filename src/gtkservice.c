@@ -303,5 +303,3 @@ GtkService *gtk_service_new(const char *path)
 
 	return service;
 }
-
-
